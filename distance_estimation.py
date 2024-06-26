@@ -53,7 +53,7 @@ def get_gpt4v_critique(image_path, client_instance, with_depth_map=True, retries
     base64_image = encode_image(image_path)
     critique_prompt = "Examine the image carefully and tell how distant are objects situated in there, considering if we're driving or navigating in that particular scenario."
     if with_depth_map:
-        critique_prompt += " Consider the depth map overlaid in the image to judge the distance estimation in the image, and compare those two critiques."
+        critique_prompt += " Consider the depth map overlaid in the image to judge the distance estimation in the image, note that colors represent distances: warmer colors (e.g., red) indicate closer objects, and cooler colors (e.g., blue) indicate farther objects."
 
     payload = {
         "model": "gpt-4o",
@@ -113,7 +113,7 @@ def benchmark_critique(image_paths, client_instance):
     for image_path in image_paths:
         initial_critique = get_gpt4v_critique(image_path, client_instance, with_depth_map=False)
         overlay_image, _ = run_depth_estimation(image_path)
-        overlay_image_path = image_path.replace(".jpg", "_overlay.jpg")
+        overlay_image_path = get_overlay_image_path(image_path)
         cv.imwrite(overlay_image_path, overlay_image)
         
         enhanced_critique = get_gpt4v_critique(overlay_image_path, client_instance, with_depth_map=True)
@@ -133,6 +133,13 @@ def get_image_paths_from_folder(folder_path):
     image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
     return [os.path.join(folder_path, file) for file in os.listdir(folder_path) if file.lower().endswith(image_extensions)]
 
+def get_overlay_image_path(image_path):
+    base, ext = os.path.splitext(image_path)
+    if ext.lower() in ['.jpg', '.jpeg']:
+        return base + "_overlay" + ext
+    else:
+        return image_path.replace(ext, "_overlay" + ext)
+
 def plot_comparison_results(benchmark_results):
     num_images = len(benchmark_results)
     initial_better_count = sum(1 for result in benchmark_results if "initial" in result["comparison_result"].lower())
@@ -147,6 +154,7 @@ def plot_comparison_results(benchmark_results):
     plt.title('Comparison of Critiques')
     plt.show()
 
+# Main function to orchestrate the entire process
 def main(args):
     image_paths = get_image_paths_from_folder(args.image_folder)
     benchmark_results = benchmark_critique(image_paths, client)
