@@ -96,17 +96,19 @@ def get_gpt4v_critique(image_path, client_instance, with_depth_map=True, retries
 
     raise Exception(f"Failed to get critique after {retries} attempts: {response.status_code} - {response_data}")
 
-def compare_critiques(initial_critique, enhanced_critique, client_instance):
-    comparison_prompt = f"Which critique is more accurate or helpful for estimating distances in the scene?\n\nInitial Critique: {initial_critique}\n\nEnhanced Critique: {enhanced_critique}"
-    response = client_instance.chat.completions.create(
-        model="gpt-4",
+def compare_critiques(image_path, initial_critique, enhanced_critique, client_instance):
+    base64_image = encode_image(image_path)
+    comparison_prompt = f"Which critique is more accurate or helpful for scenic description?\n\nInitial Critique: {initial_critique}\n\nEnhanced Critique: {enhanced_critique}"
+    response = client_instance.ChatCompletion.create(
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": comparison_prompt}
+            {"role": "user", "content": comparison_prompt},
+            {"role": "user", "content": f"data:image/jpeg;base64,{base64_image}"}
         ],
         max_tokens=150
     )
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message["content"].strip()
 
 def benchmark_critique(image_paths, client_instance):
     results = []
